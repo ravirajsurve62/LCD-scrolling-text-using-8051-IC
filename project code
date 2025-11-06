@@ -1,0 +1,134 @@
+#include <reg51.h>
+
+// LCD Control Pins
+sbit RS = P2^0;
+sbit EN = P2^1;
+sbit BUTTON = P3^2;
+
+// Delay Function
+void delay_ms(unsigned int ms) {
+    unsigned int i, j;
+    for(i = 0; i < ms; i++)
+        for(j = 0; j < 1275; j++);  // Calibrated for 12MHz clock
+}
+
+// Send Command to LCD
+void lcd_cmd(unsigned char cmd) {
+    RS = 0;
+    P1 = cmd;       // Send command on data port
+    EN = 1;
+    delay_ms(2);
+    EN = 0;
+    delay_ms(2);
+}
+
+// Send Data (Character) to LCD
+void lcd_data(unsigned char dat) {
+    RS = 1;
+    P1 = dat;       // Send data on data port
+    EN = 1;
+    delay_ms(2);
+    EN = 0;
+    delay_ms(2);
+}
+
+// Initialize LCD in 8-bit Mode
+void lcd_init() {
+    delay_ms(20);
+    lcd_cmd(0x38);  // 8-bit, 2 line, 5x8 dots
+    lcd_cmd(0x0C);  // Display ON, Cursor OFF
+    lcd_cmd(0x06);  // Entry mode, auto-increment
+    lcd_cmd(0x01);  // Clear display
+    delay_ms(2);
+}
+
+// Set Cursor Position
+void lcd_set_cursor(unsigned char row, unsigned char col) {
+    unsigned char pos;
+    if(row == 0)
+        pos = 0x80 + col;  // Line 1
+    else
+        pos = 0xC0 + col;  // Line 2
+    lcd_cmd(pos);
+}
+
+// Print String
+void lcd_print(const char *s) {
+    while(*s) {
+        lcd_data(*s++);
+    }
+}
+
+// Calculate String Length
+unsigned int str_len(const char *s) {
+    unsigned int len = 0;
+    while(s[len]) len++;
+    return len;
+}
+
+// Print 16-character window (scrolling)
+void lcd_print_window(const char *msg, unsigned int start) {
+    unsigned int len = str_len(msg);
+    unsigned char i;
+    for(i = 0; i < 16; i++) {
+        unsigned int idx = (start + i) % len;
+        lcd_data(msg[idx]);
+    }
+}
+
+// Messages
+const char msg1[] = "Next station:Kharghar ";
+const char msg2[] = "Next station:Belapur  ";
+const char msg3[] = "Next station:SeaWoods ";
+const char msg4[] = "Next station:Nerul   ";
+
+void main(void) {
+    unsigned int pos = 0;
+    unsigned char message_index = 0;
+
+BUTTON = 1;  // Input mode
+
+lcd_init();
+
+while(1) {
+lcd_set_cursor(0,0);
+switch(message_index) {
+case 0: lcd_print_window(msg1, pos); break;
+case 1: lcd_print_window(msg2, pos); break;
+case 2: lcd_print_window(msg3, pos); break;
+case 3: lcd_print_window(msg4, pos); break;
+}
+
+lcd_set_cursor(1,0);
+lcd_print("Panvel -> Thane ");
+
+pos++;
+if ((message_index == 0 && pos >= str_len(msg1)) ||
+    (message_index == 1 && pos >= str_len(msg2)) ||
+    (message_index == 2 && pos >= str_len(msg3)) ||
+    (message_index == 3 && pos >= str_len(msg4))) {
+    pos = 0;
+}
+
+// Button press to change message
+if(BUTTON == 0) {
+    // FIXED: Used a whole number for the delay
+    delay_ms(20);
+    if(BUTTON == 0) {
+        message_index++;
+        if(message_index > 3) message_index = 0;
+        pos = 0;
+        lcd_cmd(0x01);
+        // FIXED: Used a whole number for the delay
+        delay_ms(2);
+        while(BUTTON == 0);  // Wait for release
+    }
+}
+
+// FIXED: Scrolling speed. Lower number = faster scroll.
+// Try values between 150 (very fast) and 400 (slower).
+delay_ms(2);
+}
+
+
+}
