@@ -1,4 +1,4 @@
-# LCD-scrolling-text-using-8051-IC
+# LCD scrolling text using 8051 IC
 1. Platform Information Display
 Used to show real-time information such as train name, number, arrival and departure time, and platform number on station displays.
 2. Coach Display System
